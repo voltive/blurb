@@ -14,7 +14,8 @@ class Blurb
       record_type:,
       report_date: Date.today,
       metrics: nil,
-      segment: nil
+      segment: nil,
+      state_filter: nil
     )
       # create payload
       metrics = get_default_metrics(record_type.to_s.underscore.to_sym, segment) if metrics.nil?
@@ -22,8 +23,10 @@ class Blurb
         metrics: metrics.map{ |m| m.to_s.camelize(:lower) }.join(","),
         report_date: report_date
       }
+      payload[:campaign_type] = 'sponsoredProducts' if @campaign_type.to_sym == :sp && record_type.to_s.underscore.to_sym == :asins
       payload[:segment] = segment if segment
       payload[:tactic] = SD_TACTIC if @campaign_type.to_sym == :sd
+      payload[:state_filter] = state_filter.map(&:downcase).join(",") if state_filter
 
       execute_request(
         api_path: "/#{record_type.to_s.camelize(:lower)}/report",
