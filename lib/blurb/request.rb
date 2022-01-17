@@ -1,5 +1,5 @@
 require 'active_support/core_ext/string'
-require "rest-client"
+require "httparty"
 require "blurb/base_class"
 require "blurb/errors/request_throttled"
 require "blurb/errors/invalid_report_request"
@@ -17,16 +17,15 @@ class Blurb
 
     def request_config
       request_config = {
-        method: @request_type,
-        url: @url,
-        headers: @headers
+        headers: @headers,
+        follow_redirects: false
       }
 
       case @request_type
       when :get
-        request_config[:max_redirects] = 0
+        # request_config[:max_redirects] = 0
       when :post, :put
-        request_config[:payload] = @payload if @payload
+        request_config[:body] = @payload if @payload
       end
       log("request type", @request_type)
       log("request url", @url)
@@ -36,28 +35,43 @@ class Blurb
     end
 
     def make_request
-      begin
-        resp = RestClient::Request.execute(request_config())
-        log("response", resp)
-      rescue RestClient::TooManyRequests => err
-        raise RequestThrottled.new(JSON.parse(err.response.body))
-      rescue RestClient::TemporaryRedirect => err
-        return RestClient.get(err.response.headers[:location])  # If this happens, then we are downloading a report from the api, so we can simply download the location
-      rescue RestClient::NotAcceptable => err
+      resp = HTTParty.send(@request_type, @url, request_config)
+      log("response", resp)
+
+      case resp.code
+      when 307 # Report was requested and download location was returned 
+        HTTParty.get(resp.headers[:location])
+      when 406, 422
         if @url.include?("report")
-          raise InvalidReportRequest.new(JSON.parse(err.response.body))
+          raise InvalidReportRequest.new(JSON.parse(resp.body))
         else
-          raise err
+          raise FailedRequest.new(JSON.parse(resp.body))
         end
-      rescue RestClient::ExceptionWithResponse => err
-        if err.response.present?
-          raise FailedRequest.new(JSON.parse(err.response.body))
-        else 
-          raise err
-        end
+      when 429 # Too many requests
+        raise RequestThrottled.new(JSON.parse(resp.body))
+      else
+        convert_response(resp.body)
       end
-      resp = convert_response(resp)
-      return resp
+
+      # begin
+
+      # rescue RestClient::TooManyRequests => err
+      #   raise RequestThrottled.new(JSON.parse(err.response.body))
+      # # rescue RestClient::TemporaryRedirect => err
+      # #   return HTTParty.get(err.response.headers[:location])  # If this happens, then we are downloading a report from the api, so we can simply download the location
+      # rescue RestClient::NotAcceptable => err
+      #   if @url.include?("report")
+      #     raise InvalidReportRequest.new(JSON.parse(err.response.body))
+      #   else
+      #     raise err
+      #   end
+      # rescue RestClient::ExceptionWithResponse => err
+      #   if err.response.present?
+      #     raise FailedRequest.new(JSON.parse(err.response.body))
+      #   else 
+      #     raise err
+      #   end
+      # end
     end
 
     private

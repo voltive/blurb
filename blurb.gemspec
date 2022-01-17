@@ -4,7 +4,7 @@ $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
 
 Gem::Specification.new do |spec|
   spec.name          = "blurb"
-  spec.version       = "0.5.91"
+  spec.version       = "0.5.92"
   spec.authors       = ["dlbunker", "eamigo13", "smithworx"]
   spec.email         = ["evan@pattern.com"]
 
@@ -37,7 +37,7 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "byebug"
   spec.add_development_dependency "faker", "~> 2.1.0"
 
-  spec.add_runtime_dependency "rest-client", "~> 2.0"
+  spec.add_runtime_dependency "httparty", "~> 0.20.0"
   spec.add_runtime_dependency "oauth2", "~> 1.4.0"
   spec.add_runtime_dependency "activesupport"
 
