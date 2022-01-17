@@ -102,7 +102,7 @@ class Blurb
           '',
           '',
           site: 'https://api.amazon.com',
-          ssl: { version: :TLSv1 }
+          ssl: { version: :TLSv1_2 }
         )
       end
   end

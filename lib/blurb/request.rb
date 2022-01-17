@@ -18,8 +18,7 @@ class Blurb
     def request_config
       request_config = {
         headers: @headers,
-        follow_redirects: false,
-        ssl_version: :TLSv1_2
+        follow_redirects: false
       }
 
       case @request_type
