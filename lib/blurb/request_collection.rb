@@ -91,7 +91,7 @@ class Blurb
         payloads = execute_request_params[:payload].each_slice(@api_limit).to_a
         payloads.each do |p|
           execute_request_params[:payload] = p
-          results << execute_request(execute_request_params)
+          results << execute_request(**execute_request_params)
         end
         results.flatten
       end
