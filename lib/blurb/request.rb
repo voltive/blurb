@@ -41,6 +41,8 @@ class Blurb
       case resp.code
       when 307 # Report was requested and download location was returned 
         HTTParty.get(resp.headers[:location])
+      when 400
+        raise FailedRequest.new(resp.body)
       when 406, 422
         if @url.include?("report")
           raise InvalidReportRequest.new(JSON.parse(resp.body))
