@@ -1,46 +1,30 @@
 require 'blurb/request'
-require "blurb/base_class"
+require 'blurb/base_class'
+require 'blurb/errors/item_limit_exceded'
 
 class Blurb
   class RequestCollection < BaseClass
 
-    def initialize(headers:, base_url:, bulk_api_limit: 100)
-      @base_url = base_url
-      @headers = headers
+    def initialize(resource:, headers:, base_url:, bulk_api_limit: 1000)
+      @resource = resource
+      @base_url = "#{base_url}/sp/#{resource.pluralize}"
       @api_limit = bulk_api_limit
+      @headers = headers.merge(resource_headers)
     end
 
-    def list(url_params=nil)
+    def list(payload: {})
       execute_request(
-        request_type: :get,
-        url_params: url_params
-      )
-    end
-
-    def list_extended(url_params=nil)
-      execute_request(
-        api_path: "/extended",
-        request_type: :get,
-        url_params: url_params
+        api_path: '/list',
+        request_type: :post,
+        payload: payload
       )
     end
 
     def retrieve(resource_id)
-      execute_request(
-        api_path: "/#{resource_id}",
-        request_type: :get
-      )
-    end
+      payload = {}
+      payload[resource_filter_key] = { include: [resource_id.to_s] }
 
-    def retrieve_extended(resource_id)
-      execute_request(
-        api_path: "/extended/#{resource_id}",
-        request_type: :get
-      )
-    end
-
-    def create(**create_params)
-      create_bulk([create_params]).first
+      Array.wrap(list(payload: payload)[resource_response_key.underscore.to_sym]).first
     end
 
     def create_bulk(create_array)
@@ -50,8 +34,10 @@ class Blurb
       )
     end
 
-    def update(**update_params)
-      update_bulk([update_params]).first
+    def create(**create_params)
+      response = create_bulk([create_params])
+
+      handle_single_resource_response(response)
     end
 
     def update_bulk(update_array)
@@ -61,39 +47,99 @@ class Blurb
       )
     end
 
-    def delete(resource_id)
+    def update(**update_params)
+      response = update_bulk([update_params])
+
+      handle_single_resource_response(response)
+    end
+
+    def delete_bulk(resource_ids)
+      verify_payload_size(resource_ids) 
+
+      payload = {}
+      payload[resource_filter_key] = { include: resource_ids.map(&:to_s) }
+
       execute_request(
-        api_path: "/#{resource_id}",
-        request_type: :delete
-      )
+        api_path: '/delete',
+        request_type: :post,
+        payload: payload
+      )[resource_response_key.underscore.to_sym]
+    end
+
+    def delete(resource_id)
+      response = delete_bulk([resource_id])
+
+      handle_single_resource_response(response)
     end
 
     private
 
-      def execute_request(api_path: "", request_type:, payload: nil, url_params: nil)
-        url = "#{@base_url}#{api_path}"
-        url.sub!('/sd/', '/') if request_type == :get && url.include?('sd/reports') && url_params.nil?
-
-        request = Request.new(
-          url: url,
-          url_params: url_params,
-          request_type: request_type,
-          payload: payload,
-          headers: @headers
-        )
-
-        request.make_request
+    def resource_headers
+      case @resource
+      when 'target'
+        {
+          'Content-Type' => "application/vnd.spTargetingClause.v3+json",
+          'Accept' => "application/vnd.spTargetingClause.v3+json"
+        }
+      else
+        {
+          'Content-Type' => "application/vnd.sp#{@resource.upcase_first}.v3+json",
+          'Accept' => "application/vnd.sp#{@resource.upcase_first}.v3+json"
+        }
       end
+    end
 
-      # Split up bulk requests to match the api limit
-      def execute_bulk_request(**execute_request_params)
-        results = []
-        payloads = execute_request_params[:payload].each_slice(@api_limit).to_a
-        payloads.each do |p|
-          execute_request_params[:payload] = p
-          results << execute_request(**execute_request_params)
-        end
-        results.flatten
+    def resource_response_key
+      case @resource
+      when 'target'
+        'targetingClauses'
+      else
+        @resource.pluralize
       end
+    end
+
+    def resource_filter_key
+      case @resource
+      when 'productAd'
+        'adIdFilter'
+      else
+        "#{@resource}IdFilter"
+      end
+    end
+
+    def handle_single_resource_response(response)
+      if response[:error].present?
+        { status: :error, errors: response[:error].first[:errors] }
+      else
+        { status: :success, success: response[:success].first }
+      end
+    end
+
+    def execute_request(api_path: "", request_type:, payload:)
+      request = Request.new(
+        url: "#{@base_url}#{api_path}",
+        request_type: request_type,
+        payload: payload,
+        headers: @headers
+      )
+
+      request.make_request
+    end
+
+    def verify_payload_size(items)
+      return if items.size <= @api_limit
+
+      raise ItemLimitExceded, "max item limit for operation is #{@api_limit}"
+    end
+
+    def execute_bulk_request(**bulk_request_params)
+      verify_payload_size(bulk_request_params[:payload])
+
+      payload = {}
+      payload[resource_response_key] = bulk_request_params[:payload]
+      bulk_request_params[:payload] = payload
+
+      execute_request(**bulk_request_params)[resource_response_key.underscore.to_sym]
+    end
   end
 end
