@@ -1,6 +1,6 @@
 require "blurb/account"
 require "blurb/campaign_requests"
-require "blurb/snapshot_requests"
+require "blurb/export_requests"
 require "blurb/report_requests"
 require "blurb/request_collection"
 require "blurb/request_collection_with_campaign_type"
@@ -15,9 +15,8 @@ class Blurb
       :account,
       :portfolios,
       :history,
-      :sp_snapshots,
-      :sb_snapshots,
       :reports,
+      :exports,
       :sp_campaigns,
       :sb_campaigns,
       :sd_campaigns,
@@ -25,7 +24,7 @@ class Blurb
       :sp_ad_groups,
       :sd_ad_groups,
       :sp_keywords,
-      :sd_keywords,  
+      :sd_keywords,
       :sp_product_ads,
       :sd_product_ads,
       :sp_negative_keywords,
@@ -46,16 +45,10 @@ class Blurb
         headers: headers_hash,
         base_url: account.api_url
       )
-      @sp_snapshots = SnapshotRequests.new(
+      @exports = ExportRequests.new(
         headers: headers_hash,
-        base_url: account.api_url,
-        campaign_type: CAMPAIGN_TYPE_CODES[:sp]
+        base_url: account.api_url
       )
-      # @sb_snapshots = SnapshotRequests.new(
-      #   headers: headers_hash,
-      #   base_url: account.api_url,
-      #   campaign_type: CAMPAIGN_TYPE_CODES[:sb]
-      # )
       @reports = ReportRequests.new(
         headers: headers_hash,
         base_url: account.api_url
@@ -134,11 +127,6 @@ class Blurb
       #   base_url: "#{account.api_url}/v2/sp"
       # )
     end
-
-    # def snapshots(campaign_type)
-    #   return sp_snapshots if campaign_type == :sp
-    #   return sb_snapshots if campaign_type == :sb || campaign_type == :hsa
-    # end
 
     # def campaigns(campaign_type)
     #   return sp_campaigns if campaign_type == :sp

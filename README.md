@@ -300,52 +300,6 @@ Download report file content
 report_instance.download(report_location_url)
 ```
 
-### Snapshots
-```ruby
-snapshot_instance = Blurb::Snapshot.new
-```
-
-Request a snapshot
-
-```ruby
-payload_response = snapshot_instance.create({
-  "recordType" => Blurb::Snapshot::KEYWORDS,
-  "campaignType" => Blurb::Snapshot::SPONSORED_PRODUCTS,
-  "stateFilter" => "enabled,paused,archived"
-})
-```
-
-Report record types are
-
-```ruby
-Blurb::Snapshot::KEYWORDS
-Blurb::Snapshot::CAMPAIGNS
-Blurb::Snapshot::AD_GROUPS
-Blurb::Snapshot::PRODUCT_ADS
-Blurb::Snapshot::NEGATIVE_KEYWORDS
-Blurb::Snapshot::CAMPAIGN_NEGATIVE_KEYWORDS
-Blurb::Snapshot::TARGETS
-```
-
-Campaign types are
-
-```ruby
-Blurb::Report::SPONSORED_PRODUCTS
-Blurb::Report::SPONSORED_BRANDS
-```
-
-Check snapshot status
-
-```ruby
-snapshot_instance.status(snapshot_id)
-```
-
-Download snapshot file content
-
-```ruby
-snapshot_instance.download(snapshot_location_url)
-```
-
 ### Suggested Keywords
 ```ruby
 suggested_keyword_instance = Blurb::SuggestedKeyword.new
